@@ -1,0 +1,4 @@
+*.pyc
+ann_sandbox/*
+vit_b.pth
+*.sif
