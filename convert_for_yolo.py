@@ -2,65 +2,34 @@ import os
 import json
 import sys
 import glob
+import argparse
 
 
-def write_coco_segmentation(json_file, output_file, width, height):
-    with open(json_file, 'r') as f:
-        data = json.load(f)
-    
-    annotations = data['shapes']
-
-    with open(output_file, 'w') as f:
-        for annotation in annotations:
-            annotation_id = label2id
-            segmentation = annotation['points'][0]
-
-            adjusted_segmentation = []
-            for i, coord in enumerate(segmentation):
-                if i % 2 == 0:
-                    adjusted_coord = coord / width
-                else:
-                    adjusted_coord = coord / height
-                adjusted_segmentation.append(adjusted_coord)
-
-            adjusted_segmentation = str(adjusted_segmentation)[1:-1]
-            adjusted_segmentation = adjusted_segmentation.replace(",","")
-            f.write(f"{annotation_id} {adjusted_segmentation}\n")
-
-
-def process_json_files(folder, width, height):
+def process_json_files(folder, class_path, width, height):
     for root, dirs, files in os.walk(folder):
         for file in files:
             if file.endswith('.json'):
                 json_file = os.path.join(root, file)
                 output_file = os.path.join(root, os.path.splitext(file)[0] + '.txt')
-                write_coco_segmentation(json_file, output_file, width, height)
+                get_points(json_file, class_path, output_file, width, height)
                 print(f"Processed: {json_file} -> {output_file}")
 
 
-def create_txt_file(id, points):
-    """idと座標をまとめてテキスト形式で書き出す
+def get_points(json_file="multiclass.json", class_list="inputs/class-names.json", output_file="output.txt", width=640, height=480):
+    """rawデータからsegmentデータを取得しtxt形式で書き出す
+    json_file: jsonファイル名
     """
-    pass
-    
-
-
-def get_points(path="/outputs/test/multiclass.json", width=640, height=480):
-    """rawデータから学習に使用する座標を取得する
-    json_file_path: jsonファイルのパス
-    """
-    json_file_path = os.getcwd() + path
+    json_file_path = json_file
 
     with open(json_file_path, 'r') as f:
         data = json.load(f)
     
     annotations = data['shapes']
 
-    with open("outputs/test/test.txt", "w", newline='\n') as f:
+    with open(output_file, "w", newline='\n') as f:
         for annotation in annotations:
             object_wise_data = [] 
-            id = label2id(annotation["label"])
-            # object_wise_data.append(id)
+            id = load_class_json(class_list)[annotation["label"]]
 
             for point in annotation["points"]:
                 shapes = []
@@ -75,16 +44,6 @@ def get_points(path="/outputs/test/multiclass.json", width=640, height=480):
             adjusted_segmentation = adjusted_segmentation.replace(",","")
             f.write(f"{id} {adjusted_segmentation}\n")
 
-    pass
-
-
-def label2id(label)-> int:
-    """クラス名からidを返す
-    """
-    id = load_class_json()[label]
-    # print(id)
-    return id
-
 
 def load_class_json(path='/inputs/class-names.json')-> dict:
     """クラス名が書いてあるjsonを読み込んでdict型で返す
@@ -98,26 +57,22 @@ def load_class_json(path='/inputs/class-names.json')-> dict:
 
     for i, name in enumerate(raw_data["names"]):
         class_names_dict[name] = i
-    
-    # print(class_names_dict)
 
     return class_names_dict
 
 
-def test():
-    data = get_points(width=960, height=640)
-    label2id("baby_buggy")
-
-
 if __name__ == "__main__":
-    test()
-    # if len(sys.argv) < 2:
-    #     print("Please provide the folder path as arguments.")
-    #     sys.exit(1)
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--width', type=int, default=640,
+                        help='image width')
+    parser.add_argument('--height', type=int, default=480,
+                        help='image height')
+    parser.add_argument('--class_path', type=str, default='/inputs/class-names.json',
+                        help='クラス名が書いてあるjsonファイルのパスとファイル名')
+    parser.add_argument('--target', type=str, default='dataset/',
+                        help='変換したいデータセットへのパス')
+    args = parser.parse_args()
 
-    # folder_path = sys.argv[1]
-    # # width = int(sys.argv[2])
-    # # height = int(sys.argv[3])
-    # width = 640
-    # height = 480
-    # process_json_files(folder_path, width, height)
+    # data = get_points(width=args.width, height=args.height)
+    process_json_files(args.target, args.class_path, args.width, args.height)
+

@@ -1,4 +1,7 @@
 *.pyc
 ann_sandbox/*
+saan_sandbox/*
 vit_b.pth
 *.sif
+*.json
+outputs/test/*
